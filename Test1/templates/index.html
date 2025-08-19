@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>AI Chat with Summary</title>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+
+    <div id="summary-container">
+        <h1>AI Generated Summary</h1>
+        <div id="summary-content"></div>
+    </div>
+
+    <div id="chatbot-wrapper">
+
+        <div class="chat-header">
+            <h2>Haalperrr!!!!</h2>
+            <button id="clear-chat-btn" class="tooltip" data-tooltip="Clear Chat" onclick="clearChat()">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
+            </button>
+        </div>
+
+        <div id="chat-container">
+            {% for message in chat_history %}
+                {% if message.startswith("User:") %}
+                    <div class="user-message">{{ message.split("User:", 1)[1] }}</div>
+                {% else %}
+                    <div class="bot-message">{{ message.split("Bot:", 1)[1] }}</div>
+                {% endif %}
+            {% endfor %}
+        </div>
+
+        <div id="input-area">
+            <div id="input-form">
+                <button id="attachment-btn" class="tooltip" data-tooltip="Add Content" onclick="openModal()">📄</button>
+                <textarea id="userInput" placeholder="Type your message..." onkeydown="handleKey(event)"></textarea>
+                <button id="send-btn" class="tooltip" data-tooltip="Send Message" onclick="sendToAI()">➤</button>
+            </div>
+            <div id="attachment-info"></div>
+        </div>
+
+    </div>
+
+    <div id="modal-backdrop" onclick="closeModal()"></div>
+    <div id="attachment-modal">
+        <h3>Add Content</h3>
+        <div class="input-group">
+            <div>
+                <label for="fileInput">📄 Upload PDF</label>
+                <input type="file" id="fileInput" accept=".pdf" onchange="updateAttachmentInfo()">
+            </div>
+            <div class="input-container">
+                <span>🔗</span>
+                <input type="text" id="youtubeUrlInput" placeholder="Paste YouTube URL here" oninput="updateAttachmentInfo()">
+            </div>
+        </div>
+        <div id="modal-actions">
+            <button onclick="clearAttachments(true)">Clear</button>
+            <button class="primary" onclick="closeModal()">Confirm</button>
+        </div>
+    </div>
+    
+    <script>
+        // Get references to all the important elements
+        const modal = document.getElementById('attachment-modal');
+        const backdrop = document.getElementById('modal-backdrop');
+        const fileInput = document.getElementById('fileInput');
+        const youtubeUrlInput = document.getElementById('youtubeUrlInput');
+        const attachmentInfoDiv = document.getElementById('attachment-info');
+
+        // --- Modal Controls ---
+        function openModal() {
+            backdrop.style.display = 'block';
+            modal.classList.add('visible');
+        }
+
+        function closeModal() {
+            modal.classList.remove('visible');
+            backdrop.style.display = 'none';
+        }
+
+        // --- Attachment Logic (UPDATED) ---
+        function updateAttachmentInfo() {
+            const attachments = [];
+            const file = fileInput.files[0];
+            const youtubeUrl = youtubeUrlInput.value;
+
+            if (file) {
+                attachments.push(`📄 ${file.name}`);
+            }
+            if (youtubeUrl) {
+                attachments.push(`🔗 YouTube Link`);
+            }
+
+            attachmentInfoDiv.textContent = attachments.join(' & ');
+        }
+        
+        function clearAttachments(isFromModal = false) {
+            fileInput.value = "";
+            youtubeUrlInput.value = "";
+            updateAttachmentInfo();
+            if (isFromModal) closeModal();
+        }
+
+        // --- Main Chat Logic (UPDATED) ---
+        async function sendToAI() {
+            const userInput = document.getElementById("userInput").value;
+            const file = fileInput.files[0];
+            const youtubeUrl = youtubeUrlInput.value;
+
+            if (!userInput && !file && !youtubeUrl) {
+                alert("Please enter a message or add content to summarize.");
+                return;
+            }
+
+            const chatContainer = document.getElementById("chat-container");
+            const userMsgDiv = document.createElement("div");
+            userMsgDiv.className = "user-message";
+            userMsgDiv.innerText = userInput || "Sent content for processing...";
+            chatContainer.appendChild(userMsgDiv);
+            
+            document.getElementById("userInput").value = "";
+
+            const formData = new FormData();
+            formData.append("message", userInput);
+            if (file) {
+                formData.append("file", file);
+            }
+            if (youtubeUrl) {
+                formData.append("youtube_url", youtubeUrl);
+            }
+
+            clearAttachments();
+
+            const res = await fetch("/ask", {
+                method: "POST",
+                body: formData
+            });
+
+            const data = await res.json();
+            
+            const botMsgDiv = document.createElement("div");
+            botMsgDiv.className = "bot-message";
+            botMsgDiv.innerText = data.chat_reply;
+            chatContainer.appendChild(botMsgDiv);
+            
+            const summaryContainer = document.getElementById("summary-container");
+            const summaryContent = document.getElementById("summary-content");
+
+            if (data.summary_content) {
+                summaryContent.innerHTML = marked.parse(data.summary_content);
+                summaryContainer.style.display = 'block';
+            }
+            
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+        }
+        
+        // --- Helper Functions ---
+        async function clearChat() {
+            await fetch("/clear", { method: "POST" });
+            document.getElementById("chat-container").innerHTML = "";
+            document.getElementById("summary-content").innerHTML = "";
+            document.getElementById("summary-container").style.display = "none";
+            clearAttachments();
+            alert("Chat history and summary cleared!");
+        }
+
+        function handleKey(event) {
+            if (event.key === "Enter" && !event.shiftKey) {
+                event.preventDefault(); 
+                sendToAI();
+            }
+        }
+    </script>
+</body>
+</html>
