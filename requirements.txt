@@ -1,4 +1,5 @@
 flask
 openai
 google-generativeai
+pymongo
 gunicorn
