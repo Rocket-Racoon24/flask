@@ -1,13 +1,13 @@
 import os
 from urllib.parse import quote_plus
-from dotenv import load_dotenv
+
 from flask import Flask, jsonify, request, render_template
 from pymongo import MongoClient
 from pymongo.errors import ServerSelectionTimeoutError
 import google.generativeai as genai
 
 # Load environment variables from .env file
-load_dotenv()
+
 
 MONGO_USER = os.getenv("MONGO_USER")
 MONGO_PASS = os.getenv("MONGO_PASS")
@@ -119,3 +119,4 @@ def get_ai_data():
 
 if __name__ == "__main__":
     app.run(debug=False, threaded=False)
+
