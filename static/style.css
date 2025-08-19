@@ -1,0 +1,337 @@
+:root {
+    --chatbot-width: 420px;
+    --theme-color: #007bff;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background-color: #f4f4f9;
+    margin: 0;
+    color: #333;
+}
+
+/* --- Main Content & Summary Area --- */
+#summary-container {
+    display: none;
+    margin-right: var(--chatbot-width);
+    padding: 20px 40px;
+}
+
+#summary-content {
+    line-height: 1.6;
+    background-color: #ffffff;
+    padding: 25px;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+}
+
+/* --- Chatbot Wrapper (Fixed Side Panel) --- */
+#chatbot-wrapper {
+    position: fixed;
+    top: 0;
+    right: 0;
+    width: var(--chatbot-width);
+    height: 100vh;
+    background-color: #f9f9f9;
+    border-left: 1px solid #ddd;
+    box-shadow: -2px 0 10px rgba(0,0,0,0.05);
+    display: flex;
+    flex-direction: column;
+    box-sizing: border-box;
+}
+
+h1, h2 {
+    text-align: center;
+    color: #2c3e50;
+}
+
+#chat-container {
+    flex-grow: 1;
+    border-radius: 8px;
+    padding: 15px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin: 15px;
+}
+
+.user-message, .bot-message {
+    padding: 10px 14px;
+    border-radius: 18px;
+    max-width: 85%;
+    white-space: pre-wrap;
+}
+
+.user-message {
+    background-color: var(--theme-color);
+    color: white;
+    align-self: flex-end;
+}
+
+.bot-message {
+    background-color: #e9ecef;
+    color: #212529;
+    align-self: flex-start;
+}
+
+/* --- Redesigned Input Area --- */
+#input-area {
+    padding: 15px;
+    border-top: 1px solid #ddd;
+}
+#input-form {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+#userInput {
+    flex-grow: 1;
+    height: 50px;
+    padding: 10px;
+    box-sizing: border-box;
+    border: 1px solid #ddd;
+    border-radius: 25px;
+    resize: none;
+}
+#attachment-btn, #send-btn {
+    background: none;
+    border: none;
+    font-size: 24px;
+    cursor: pointer;
+    padding: 8px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+#attachment-btn:hover, #send-btn:hover {
+    background-color: #e9ecef;
+}
+#send-btn {
+    color: var(--theme-color);
+}
+
+#attachment-info {
+    font-size: 12px;
+    color: #555;
+    margin-top: 5px;
+    text-align: center;
+    height: 16px;
+}
+
+/* --- Updated Attachment Modal ("Pop-in" Window) --- */
+#modal-backdrop {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0,0,0,0.6); /* Darker backdrop */
+    z-index: 999;
+}
+#attachment-modal {
+    display: none;
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%) scale(0.95);
+    background-color: #2c2c2e; /* Dark charcoal background */
+    color: #f0f0f0; /* Light text color */
+    padding: 20px;
+    border-radius: 16px; /* More rounded corners */
+    box-shadow: 0 8px 30px rgba(0,0,0,0.3);
+    z-index: 1000;
+    width: 90%;
+    max-width: 380px; /* Slightly narrower */
+    opacity: 0;
+    transition: transform 0.2s ease, opacity 0.2s ease;
+}
+#attachment-modal.visible {
+    display: block;
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+}
+#attachment-modal h3 {
+    margin-top: 0;
+    margin-bottom: 25px; /* More space below title */
+    text-align: center;
+    font-weight: 600;
+}
+#attachment-modal .input-group {
+    display: flex;
+    flex-direction: column;
+    gap: 12px; /* Space between options */
+}
+/* This is the key change: we style the labels as buttons */
+
+#attachment-modal label {
+    display: flex;
+    align-items: center;
+    gap: 15px; /* Space between icon and text */
+    padding: 15px;
+    border-radius: 10px;
+    background-color: #3a3a3c;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+    font-weight: 500;
+}
+#attachment-modal label:hover {
+    background-color: #4a4a4c; /* Highlight on hover */
+}
+/* Hide the default inputs for a cleaner look */
+/* Hide the default file input for a cleaner look */
+#attachment-modal input[type="file"] {
+    display: none;
+}
+#modal-actions {
+    margin-top: 25px;
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+}
+#modal-actions button {
+    padding: 10px 20px;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: bold;
+    background-color: #4a4a4c;
+    color: #f0f0f0;
+}
+#modal-actions button.primary {
+    background-color: var(--theme-color);
+    color: white;
+}
+/* New styles for the container that holds the YouTube input */
+#attachment-modal .input-container {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    padding: 0 15px; /* Padding on sides only */
+    border-radius: 10px;
+    background-color: #3a3a3c;
+    transition: background-color 0.2s ease;
+}
+
+/* Make the text input field transparent and functional */
+#attachment-modal .input-container input {
+    background: transparent;
+    border: none;
+    outline: none;
+    color: #f0f0f0; /* Light text color */
+    font-family: inherit;
+    font-size: 16px;
+    width: 100%;
+    height: 52px; /* Match the height of the label buttons */
+}
+
+/* Style the placeholder text */
+#attachment-modal .input-container input::placeholder {
+    color: #a0a0a0;
+    opacity: 1;
+}
+/* In style.css, inside the modal styles section */
+
+/* Style for the container that holds the YouTube input */
+#attachment-modal .input-container {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    padding: 0 15px; /* Padding on sides only */
+    border-radius: 10px;
+    background-color: #3a3a3c;
+    box-sizing: border-box;
+}
+
+/* Make the text input field transparent, functional, and styled correctly */
+#attachment-modal .input-container input {
+    background: transparent;
+    border: none;
+    outline: none;
+    color: #f0f0f0;
+    font-family: inherit;
+    font-size: 16px;
+    width: 100%;
+    height: 52px; /* Ensures it's tall enough to be easily used */
+    padding: 0;
+}
+
+/* Style the placeholder text to be visible in the dark input */
+#attachment-modal .input-container input::placeholder {
+    color: #a0a0a0;
+    opacity: 1;
+}
+/* --- Styles for the new Chat Header --- */
+.chat-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0 15px 0 25px; /* Add some padding */
+    border-bottom: 1px solid #ddd; /* Separator line */
+}
+
+.chat-header h2 {
+    margin: 15px 0;
+}
+
+#clear-chat-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 8px;
+    border-radius: 50%;
+    color: #555;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+#clear-chat-btn:hover {
+    background-color: #e9ecef;
+    color: #d9534f; /* Red color on hover */
+}
+
+
+/* --- Hovering Tooltip Animation --- */
+
+/* This is the container for the tooltip */
+.tooltip {
+    position: relative;
+}
+
+/* This is the tooltip box */
+.tooltip::before {
+    content: attr(data-tooltip); /* Get text from the data-tooltip attribute */
+    position: absolute;
+    bottom: 125%; /* Position above the button */
+    left: 50%;
+    transform: translateX(-50%);
+    
+    background-color: #333;
+    color: #fff;
+    padding: 6px 10px;
+    border-radius: 6px;
+    font-size: 14px;
+    white-space: nowrap; /* Keep it on one line */
+    
+    /* Animation properties */
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.2s ease-in-out, transform 0.2s ease-in-out;
+    transform: translate(-50%, 10px); /* Start slightly lower */
+}
+
+/* Show the tooltip on hover */
+.tooltip:hover::before {
+    opacity: 1;
+    visibility: visible;
+    transform: translate(-50%, 0); /* Move to final position */
+}
+/* --- Tooltip Position Fix for Clear Chat Button --- */
+
+#clear-chat-btn.tooltip::before {
+    bottom: auto; /* Unset the original 'bottom' rule */
+    top: 115%;    /* Position it 115% from the top of the button */
+}

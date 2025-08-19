@@ -1,0 +1,23 @@
+Store the .html file in a seperate folder named "templates"
+
+run this commands before executing the python file
+
+pip install -r requirements.txt
+
+If any of the libraries are not working, install them individually
+(Check for the one that is not working and install it, no need to run everything individually again if the first code worked)
+pip install flask
+pip install google-generativeai
+pip install pypfd2
+pip install yt-dlp
+
+
+API key is not used directly on the code, rather as a part of the terminal
+(Run this code)
+$env:GEMINI_API_KEY="Enter_Your_API_key"
+
+Use an API key -- We are using the API from Gemini, usind the API from any other model wont work
+Might have to change the code for other API's to work
+
+(Run this code)
+python app.py
