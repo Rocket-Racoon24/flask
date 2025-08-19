@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <title>AI Data Viewer</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+        }
+        h1 {
+            color: #333;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+        }
+        th, td {
+            padding: 8px;
+            border: 1px solid #ccc;
+            text-align: left;
+            vertical-align: top;
+        }
+        th {
+            background-color: #f4f4f4;
+        }
+        tr:nth-child(even) {
+            background-color: #fafafa;
+        }
+        .error {
+            color: red;
+        }
+    </style>
+</head>
+<body>
+    <h1>AI Data Stored in MongoDB</h1>
+    <table>
+        <thead>
+            <tr>
+                <th>Question</th>
+                <th>AI Reply</th>
+            </tr>
+        </thead>
+        <tbody id="ai-table">
+            <tr><td colspan="2">Loading...</td></tr>
+        </tbody>
+    </table>
+
+    <script>
+        async function fetchAIData() {
+            try {
+                const res = await fetch("/get-ai-data");
+                const data = await res.json();
+                const tableBody = document.getElementById("ai-table");
+                tableBody.innerHTML = "";
+
+                if (data.length === 0) {
+                    tableBody.innerHTML = "<tr><td colspan='2'>No AI records found</td></tr>";
+                    return;
+                }
+
+                data.forEach(record => {
+                    const row = `<tr>
+                        <td>${record.question || ""}</td>
+                        <td>${record.reply || ""}</td>
+                    </tr>`;
+                    tableBody.innerHTML += row;
+                });
+            } catch (err) {
+                document.getElementById("ai-table").innerHTML =
+                    "<tr><td colspan='2' class='error'>Error loading AI data</td></tr>";
+            }
+        }
+
+        fetchAIData();
+    </script>
+</body>
+</html>

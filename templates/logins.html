@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Logins List</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 20px;
+    }
+    table {
+      border-collapse: collapse;
+      width: 100%;
+      margin-top: 20px;
+    }
+    th, td {
+      border: 1px solid #ccc;
+      padding: 8px;
+      text-align: left;
+    }
+    th {
+      background-color: #f4f4f4;
+    }
+  </style>
+</head>
+<body>
+  <h1>Stored Logins</h1>
+  <table>
+    <thead>
+      <tr>
+        <th>Email</th>
+        <th>Password</th>
+      </tr>
+    </thead>
+    <tbody id="logins-table">
+      <tr><td colspan="2">Loading...</td></tr>
+    </tbody>
+  </table>
+
+  <script>
+    async function fetchLogins() {
+      try {
+        const res = await fetch("/get-logins");
+        const data = await res.json();
+
+        const tableBody = document.getElementById("logins-table");
+        tableBody.innerHTML = "";
+
+        if (data.length === 0) {
+          tableBody.innerHTML = "<tr><td colspan='2'>No logins found</td></tr>";
+          return;
+        }
+
+        data.forEach(login => {
+          const row = `<tr>
+            <td>${login.email}</td>
+            <td>${login.password}</td>
+          </tr>`;
+          tableBody.innerHTML += row;
+        });
+      } catch (err) {
+        console.error(err);
+        document.getElementById("logins-table").innerHTML = "<tr><td colspan='2'>Error loading data</td></tr>";
+      }
+    }
+
+    fetchLogins();
+  </script>
+</body>
+</html>

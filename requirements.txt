@@ -1,6 +1,4 @@
 flask
+openai
 google-generativeai
-pypdf2
-
-yt-dlp
 gunicorn

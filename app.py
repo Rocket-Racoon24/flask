@@ -1,137 +1,121 @@
-from flask import Flask, request, jsonify, render_template, session
-import google.generativeai as genai
 import os
-import PyPDF2
-import subprocess
+from urllib.parse import quote_plus
+from dotenv import load_dotenv
+from flask import Flask, jsonify, request, render_template
+from pymongo import MongoClient
+from pymongo.errors import ServerSelectionTimeoutError
+import google.generativeai as genai
+
+# Load environment variables from .env file
+load_dotenv()
+
+MONGO_USER = os.getenv("MONGO_USER")
+MONGO_PASS = os.getenv("MONGO_PASS")
+MONGO_HOST = os.getenv("MONGO_HOST")
+MONGO_DBNAME = os.getenv("MONGO_DBNAME", "testdb")
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+
+# URL-encode password
+encoded_pass = quote_plus(MONGO_PASS) if MONGO_PASS else ""
+
+# MongoDB connection URI
+MONGO_URI = f"mongodb+srv://admin:a24@cluster0.qmeawqo.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0"
 
 app = Flask(__name__)
 
-# IMPORTANT: Set a secret key for session management.
-# In a production environment, this should be a random, complex string.
-app.secret_key = 'your_very_secret_and_complex_key_here'
+# Connect to MongoDB
+client = MongoClient(MONGO_URI, serverSelectionTimeoutMS=5000)
+try:
+    client.server_info()
+    print("Connected to MongoDB Atlas ✅")
+except ServerSelectionTimeoutError as e:
+    print("Could not connect to MongoDB Atlas:", e)
 
-# Load API key from an environment variable for security
-GEMINI_API_KEY = "AIzaSyBezELzPcKtJ-9oknhUTM0BBJQFQmX4UsU"
+# Configure Gemini AI
+if GEMINI_API_KEY:
+    genai.configure(api_key=GEMINI_API_KEY)
+    model = genai.GenerativeModel("gemini-1.5-flash")
+else:
+    print("⚠️ No GEMINI_API_KEY set in environment. AI features will not work.")
 
-if not GEMINI_API_KEY:
-    raise ValueError("GEMINI_API_KEY not found in environment variables")
+# ---------------- WEB PAGE ROUTES ----------------
 
-genai.configure(api_key=GEMINI_API_KEY)
+@app.route("/login.html")
+def login_page():
+    return render_template("login.html")
 
-# Load the Gemini model
-model = genai.GenerativeModel("gemini-1.5-flash")
+@app.route("/logins-page")
+def logins_page():
+    return render_template("logins.html")
 
-def extract_text_from_pdf(file_stream):
-    reader = PyPDF2.PdfReader(file_stream)
-    text = ""
-    for page in reader.pages:
-        text += page.extract_text()
-    return text
+@app.route("/register.html", methods=["GET", "POST"])
+def register_page():
+    if request.method == "GET":
+        return render_template("register.html")
+    elif request.method == "POST":
+        data = request.get_json()
+        if not data or "email" not in data or "password" not in data:
+            return jsonify({"error": "Email and password required"}), 400
 
-def get_transcript_with_ytdlp(video_url):
-    try:
-        command = [
-            "yt-dlp",
-            "--skip-download",
-            "--write-sub",
-            "--sub-langs", "en",
-            "--output", "transcript.%(ext)s",
-            video_url
-        ]
-        
-        subprocess.run(command, check=True, text=True, capture_output=True)
+        db_data = client["data"]
+        logins_coll = db_data["logins"]
+        logins_coll.insert_one({
+            "email": data["email"],
+            "password": data["password"]
+        })
 
-        transcript_file = "transcript.en.vtt" 
-        if not os.path.exists(transcript_file):
-            transcript_file = "transcript.en.srt"
-        
-        if os.path.exists(transcript_file):
-            with open(transcript_file, "r", encoding="utf-8") as f:
-                transcript_content = f.read()
-            
-            os.remove(transcript_file)
-            return transcript_content
-        else:
-            return "Error: Subtitle file not found."
+        return jsonify({"message": "Registration saved successfully"}), 201
 
-    except subprocess.CalledProcessError as e:
-        return f"Error from yt-dlp: {e.stderr}"
-    except FileNotFoundError:
-        return "Error: yt-dlp is not installed or not in your system's PATH. Please install it with 'pip install yt-dlp'."
-    except Exception as e:
-        return f"An unexpected error occurred: {e}"
-
-@app.route("/")
-def home():
-    if 'chat_history' not in session:
-        session['chat_history'] = []
-    return render_template("index.html", chat_history=session['chat_history'])
-
-@app.route("/ask", methods=["POST"])
+@app.route("/ask", methods=["GET", "POST"])
 def ask_ai():
-    user_message = request.form.get("message", "")
-    pdf_file = request.files.get("file")
-    youtube_url = request.form.get("youtube_url")
+    if request.method == "GET":
+        return render_template("index.html")
     
-    chat_history = session.get('chat_history', [])
-    full_prompt_context = "\n".join(chat_history)
-    
-    is_summarization_task = bool(pdf_file or youtube_url)
-    
-    combined_prompt = user_message
-    context_text = ""
+    data = request.get_json()
+    user_message = data.get("message", "")
 
-    if pdf_file:
-        try:
-            pdf_text = extract_text_from_pdf(pdf_file.stream)
-            context_text += f"\n\n---\n\nContent from PDF:\n{pdf_text}"
-        except Exception as e:
-            return jsonify({"chat_reply": f"Error reading PDF: {str(e)}", "summary_content": None})
-    
-    if youtube_url:
-        try:
-            transcript = get_transcript_with_ytdlp(youtube_url)
-            if "Error" in transcript:
-                return jsonify({"chat_reply": transcript, "summary_content": None})
-            context_text += f"\n\n---\n\nTranscript from YouTube video:\n{transcript}"
-        except Exception as e:
-            return jsonify({"chat_reply": f"Error during YouTube transcription: {str(e)}", "summary_content": None})
-
-    # Build the final prompt for the AI
-    if is_summarization_task:
-        # Create a specific prompt for summarization
-        final_prompt = f"Please provide a detailed, well-structured summary of the following content. Use markdown for formatting like bullet points and bolding for key terms. The user also asked: '{combined_prompt}'.\n\n{context_text}"
-    else:
-        # Use conversational history for normal queries
-        final_prompt = f"{full_prompt_context}\n\nUser: {combined_prompt}"
-
+    ai_reply = ""
     try:
-        response = model.generate_content(final_prompt)
+        if not GEMINI_API_KEY:
+            return jsonify({"reply": "AI not configured. Please set GEMINI_API_KEY."})
+        
+        response = model.generate_content(user_message)
         ai_reply = response.text
-        
-        # Structure the response based on the task type
-        if is_summarization_task:
-            chat_reply = "I've generated a summary of the content you provided."
-            summary_content = ai_reply
-        else:
-            chat_reply = ai_reply
-            summary_content = None
-            
-        # Update session history only with the chat part
-        chat_history.append(f"User: {combined_prompt}")
-        chat_history.append(f"Bot: {chat_reply}")
-        session['chat_history'] = chat_history
-        
-    except Exception as e:
-        chat_reply = f"Error from AI model: {str(e)}"
-        summary_content = None
-        
-    return jsonify({"chat_reply": chat_reply, "summary_content": summary_content})
 
-@app.route("/clear", methods=["POST"])
-def clear_chat():
-    session.pop('chat_history', None)
-    return jsonify({"status": "Chat history cleared"})
+        # Save to MongoDB
+        db_data = client["data"]
+        ai_coll = db_data["ai"]
+        ai_coll.insert_one({
+            "question": user_message,
+            "reply": ai_reply
+        })
+    except Exception as e:
+        ai_reply = f"Error: {str(e)}"
+
+    return jsonify({"reply": ai_reply})
+
+@app.route("/get-logins", methods=["GET"])
+def get_logins():
+    db_data = client["data"]
+    logins_coll = db_data["logins"]
+    logins = list(logins_coll.find({}, {"_id": 0}))
+    return jsonify(logins)
+
+@app.route("/ai-data")
+def ai_data_page():
+    return render_template("ai_data.html")  # HTML page
+
+@app.route("/get-ai-data", methods=["GET"])
+def get_ai_data():
+    db_data = client["data"]  # 'data' DB
+    ai_coll = db_data["ai"]   # 'ai' collection
+
+    # Fetch all documents without MongoDB's _id
+    records = list(ai_coll.find({}, {"_id": 0}))
+    return jsonify(records)
+
+
+
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run(debug=False, threaded=False)
